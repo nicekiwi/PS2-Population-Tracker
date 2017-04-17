@@ -1,7 +1,7 @@
 PS2-Population-Tracker
 ======================
 
-A simple script to listen to login/logout events from the planetside 2 streaming api. Characters are saved into remote database using bookshelf/knex. Refer to psarchives.com for a website that uses the population data
+A simple script to listen to login/logout events from the planetside 2 streaming api. Characters are saved into a remote database using bookshelf/knex. Refer to psarchives.com for a website that uses the population data
 
 ### Environment variables
 

@@ -3,7 +3,7 @@ let ReconWs    = require('recon-ws'),
 
 let bookshelf  = require('bookshelf');
 
-let population = require('/models/population');
+let population = require('./models/population');
 
 let ws = new ReconWs('wss://push.planetside2.com/streaming?environment=ps2&service-id=s:' + process.env.DBG_KEY);
 

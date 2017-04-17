@@ -86,5 +86,3 @@ function generateCharacterData(character_id, login) {
       });
   });
 }
-
-module.exports = router;

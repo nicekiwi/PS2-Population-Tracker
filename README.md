@@ -28,7 +28,7 @@ pm2 start process.yaml
 
 ### Database Structure
 
-This project is module within the larger PSArchives project. This uses its database and hence no migrations exist here. The table structure for `population` is as follows (PostgreSQL sample)
+This project is a module within the larger PSArchives project. This uses its database and hence no migrations exist here. The table structure for `population` is as follows (PostgreSQL sample)
 
 ```sql
 create table population

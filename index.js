@@ -39,7 +39,7 @@ function processLoggingEvents(payload) {
 }
 
 function generateCharacterData(character_id, login) {
-  let uri = 'http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/ps2/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,head_id,profile_id,title_id,battle_rank(percent_to_next)';
+  let uri = 'http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/ps2/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)';
   let query = {
     character_id: character_id,
     name: null,

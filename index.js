@@ -49,6 +49,7 @@ function generateCharacterData(character_id, login) {
     outfit_tag: null,
     world_id: null,
     faction_id: null,
+    head_id: null,
     login: login
   };
 
@@ -61,11 +62,14 @@ function generateCharacterData(character_id, login) {
       if (character.hasOwnProperty('battle_rank')) {
         query.rank = character.battle_rank.value;
       }
+      if (character.hasOwnProperty('world_id')) {
+        query.world_id = character.world_id;
+      }
       if (character.hasOwnProperty('faction_id')) {
         query.faction_id = character.faction_id;
       }
-      if (character.hasOwnProperty('world_id')) {
-        query.world_id = character.world_id;
+      if (character.hasOwnProperty('head_id')) {
+        query.head_id = character.head_id;
       }
       if (character.hasOwnProperty('outfit')) {
         if (character.outfit.hasOwnProperty('outfit_id')) {

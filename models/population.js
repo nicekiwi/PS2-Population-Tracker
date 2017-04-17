@@ -11,11 +11,6 @@ let model = bookshelf.Model.extend({
   readOne: function (character_id) {
     return model.forge().where('character_id', character_id).fetch({require: true})
   },
-  read: function (world_id) {
-    return model.forge().query(function(qb) {
-      qb.where('world_id', world_id).whereNotNull('login')
-    }).orderBy('name', 'ASC').fetchAll();
-  },
   update: function (model, object) {
     return model.save(object, {method: 'update'})
   }

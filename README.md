@@ -43,6 +43,7 @@ create table population
     outfit_tag varchar(255),
     world_id integer,
     faction_id integer,
+    head_id integer,
     login timestamp with time zone,
     created_at timestamp with time zone default now(),
     updated_at timestamp with time zone default now()

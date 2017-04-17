@@ -3,11 +3,13 @@ PS2-Population-Tracker
 
 A simple script to listen to login/logout events from the planetside 2 streaming api. Characters are saved into remote database using bookshelf/knex. Refer to psarchives.com for a website that uses the population data
 
-__Environment variables must be set in process.yaml__
+### Environment variables
+
+Environment variables must be set in process.yaml when using pm2.
 
 Refer to the sample process.yaml.example
 
-__Install__
+### Install
 
 Install packages with
 
@@ -15,7 +17,7 @@ Install packages with
 npm install
 ```
 
-__Run__
+### Run
 
 Run with pm2
 
@@ -24,7 +26,7 @@ pm2 start process.yaml
 ```
 
 
-__Database Structure__
+### Database Structure
 
 This project is module within the larger PSArchives project. This uses its database and hence no migrations exist here. The table structure for `population` is as follows (PostgreSQL sample)
 

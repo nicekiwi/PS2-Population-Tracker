@@ -49,3 +49,33 @@ create table population
     updated_at timestamp with time zone default now()
 );
 ```
+
+
+### Id Mappings
+
+world_id
+
+```
+1    : Connery
+25   : Briggs
+13   : Cobalt
+17   : Emerald
+19   : Jaeger
+10   : Miller
+1000 : Genudine // ps4 eu
+2000 : Ceres    // ps4 us
+```
+
+head_id
+
+```
+1 : male white
+2 : male latino
+3 : male asian
+4 : male black
+5 : female white
+6 : female latino
+7 : female asian
+8 : female black
+```
+

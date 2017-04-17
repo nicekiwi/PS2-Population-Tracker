@@ -57,11 +57,11 @@ world_id
 
 ```
 1    : Connery
-25   : Briggs
+10   : Miller
 13   : Cobalt
 17   : Emerald
 19   : Jaeger
-10   : Miller
+25   : Briggs
 1000 : Genudine // ps4 eu
 2000 : Ceres    // ps4 us
 ```

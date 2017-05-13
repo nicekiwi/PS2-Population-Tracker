@@ -39,7 +39,7 @@ function Stream(env) {
       .catch(function () {
         if (loginDate !== null) {
           // character entry does not exist. query api for basic data when logging in only
-          generateCharacterData(env, payload.character_id, loginDate);
+          generateCharacterData(payload.character_id, loginDate);
         }
       });
   }
@@ -89,6 +89,7 @@ function Stream(env) {
           }
         }
       }
+
       // create population entry
       new population.create(query)
         .catch(function (err) {

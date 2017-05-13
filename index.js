@@ -11,7 +11,7 @@ function Stream(env) {
 
   wss.on('open', function() {
     console.log('Socket Connected -> ' + env);
-    wss.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+    subscribe();
   });
 
   wss.on('message', function (data) {
@@ -23,9 +23,9 @@ function Stream(env) {
     }
   });
 
-  Stream.prototype.resubscribe = function() {
+  function subscribe() {
     wss.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
-  };
+  }
 
   function processLoggingEvents(payload) {
     // null the login date when character is logging out
@@ -99,11 +99,6 @@ function Stream(env) {
   }
 }
 
-let PC = new Stream('ps2');
-//PC.resubscribe();
-
-let EU = new Stream('ps2ps4eu');
-//EU.resubscribe();
-
-let US = new Stream('ps2ps4us');
-//US.resubscribe();
+new Stream('ps2');
+new Stream('ps2ps4eu');
+new Stream('ps2ps4us');

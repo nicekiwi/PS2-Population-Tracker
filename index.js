@@ -5,41 +5,69 @@ let bookshelf  = require('bookshelf');
 
 let population = require('./models/population');
 
-let ws = new ReconWs('wss://push.planetside2.com/streaming?environment=ps2&service-id=s:' + process.env.DBG_KEY);
+function streamingUrl(environment) {
+  return 'wss://push.planetside2.com/streaming?environment=' + environment + '&service-id=s:' + process.env.DBG_KEY
+}
 
-ws.on('open', function() {
-  console.log('Census Websocket connected!');
-  ws.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+let wsPC = new ReconWs(streamingUrl('ps2'));
+let wsEU = new ReconWs(streamingUrl('ps2ps4eu'));
+let wsUS = new ReconWs(streamingUrl('ps2ps4us'));
+
+wsPC.on('open', function() {
+  console.log('PC WSS Connected!');
+  wsPC.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
 });
 
-ws.on('message', function (data) {
+wsEU.on('open', function() {
+  console.log('EU WSS Connected!');
+  wsEU.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+});
+
+wsUS.on('open', function() {
+  console.log('US WSS Connected!');
+  wsUS.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+});
+
+wsPC.on('message', function (data) {
+  webSocketData('ps2', data);
+});
+
+wsEU.on('message', function (data) {
+  webSocketData('ps2ps4eu', data);
+});
+
+wsUS.on('message', function (data) {
+  webSocketData('ps2ps4us', data);
+});
+
+function webSocketData(env, data) {
   let packet = JSON.parse(data);
   if (packet.hasOwnProperty('payload') && packet.payload.hasOwnProperty('event_name')) {
     if (packet.payload.event_name === 'PlayerLogin' || packet.payload.event_name === 'PlayerLogout') {
-      processLoggingEvents(packet.payload);
+      processLoggingEvents(env, packet.payload);
     }
   }
-});
+}
 
-function processLoggingEvents(payload) {
+function processLoggingEvents(env, payload) {
   // null the login date when character is logging out
-  let login = (payload.event_name === 'PlayerLogin') ? new Date() : null;
+  let loginDate = (payload.event_name === 'PlayerLogin') ? new Date() : null;
   // Check if character is already in population table
   new population.readOne(payload.character_id)
     .then(function (model) {
       // character entry exists, so update it
-      new population.update(model, { login: login });
+      new population.update(model, { login: loginDate });
     })
     .catch(function () {
-      // character entry does not exist. query api for basic data when logging in only
-      if (login !== null) {
-        generateCharacterData(payload.character_id, login);
+      if (loginDate !== null) {
+        // character entry does not exist. query api for basic data when logging in only
+        generateCharacterData(env, payload.character_id, loginDate);
       }
     });
 }
 
-function generateCharacterData(character_id, login) {
-  let uri = 'http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/ps2/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)';
+function generateCharacterData(env, character_id, login) {
+  let uri = 'http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)';
   let query = {
     character_id: character_id,
     name: null,

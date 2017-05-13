@@ -13,7 +13,15 @@ let model = bookshelf.Model.extend({
   },
   update: function (model, object) {
     return model.save(object, {method: 'update'})
-  }
+  },
+  autoLogout: function (autoLogoutThresholdMs) {
+    let autoLogout = new Date(new Date().getTime() - autoLogoutThresholdMs); // 6 hours
+    return model.forge()
+      .query(function(qb) {
+        qb.where('login', '<', autoLogout).orWhereNull('login')
+      })
+      .destroy()
+  },
 });
 
 module.exports = model;

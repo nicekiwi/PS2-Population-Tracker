@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "bookshelf": "^0.10.3",
+    "cron": "^1.2.1",
     "knex": "^0.12.9",
     "pg": "^6.1.5",
     "prequest": "^1.0.0",

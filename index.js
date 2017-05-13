@@ -1,7 +1,6 @@
-let ReconWs    = require('recon-ws'),
-    prequest   = require('prequest');
-
-let bookshelf  = require('bookshelf');
+let ReconWs  = require('recon-ws'),
+    prequest = require('prequest'),
+    CronJob  = require('cron').CronJob;
 
 let population = require('./models/population');
 
@@ -97,8 +96,28 @@ function Stream(env) {
         });
     });
   }
+
+  Stream.prototype.resubscribe = function() {
+    subscribe();
+  };
 }
 
-new Stream('ps2');
-new Stream('ps2ps4eu');
-new Stream('ps2ps4us');
+let PC = new Stream('ps2');
+let EU = new Stream('ps2ps4eu');
+let US = new Stream('ps2ps4us');
+
+// Resubscribe to pop tracking every 6 hours
+new CronJob('0 0 */6 * * *', function() {
+  console.error(new Date().toISOString(), 'Resubscribe');
+  // Run once a day at midnight. https://en.wikipedia.org/wiki/Cron
+  PC.resubscribe();
+  EU.resubscribe();
+  US.resubscribe();
+}, null, true, process.env.TZ);
+
+// Clear out bad population every 1 minutes
+new CronJob('0 */1 * * * *', function() {
+  // Clear out all population entries with a null login date or a very old login (6 hrs old)
+  let hours = 6;
+  population.autoLogout(hours * 60 * 60 * 1000)
+}, null, true, process.env.TZ);

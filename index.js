@@ -10,20 +10,31 @@ function Stream(env) {
 
   wss.on('open', function() {
     console.log('Socket Connected -> ' + env);
-    subscribe();
+    clearSubscribe();
   });
 
   wss.on('message', function (data) {
+    if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":[]}}') {
+      // clear subscription completed, resubscribe to pop events
+      subscribe();
+      return;
+    }
     let packet = JSON.parse(data);
     if (packet.hasOwnProperty('payload') && packet.payload.hasOwnProperty('event_name')) {
       if (packet.payload.event_name === 'PlayerLogin' || packet.payload.event_name === 'PlayerLogout') {
+        //console.log(data);
         processLoggingEvents(packet.payload);
       }
     }
   });
 
   function subscribe() {
+    console.error('Resubscribing to ' + env);
     wss.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+  }
+
+  function clearSubscribe() {
+    wss.send('{"service":"event","action":"clearSubscribe","all":"true"}');
   }
 
   function processLoggingEvents(payload) {
@@ -98,7 +109,7 @@ function Stream(env) {
   }
 
   Stream.prototype.resubscribe = function() {
-    subscribe();
+    clearSubscribe();
   };
 }
 

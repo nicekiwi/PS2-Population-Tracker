@@ -18,10 +18,25 @@ function Stream(env) {
       subscribe();  // clear subscription completed, resubscribe to pop events
       return;
     }
+    // process data
     let packet = JSON.parse(data);
     if (packet.hasOwnProperty('payload') && packet.payload.hasOwnProperty('event_name')) {
+      // check for player login/logout events
       if (packet.payload.event_name === 'PlayerLogin' || packet.payload.event_name === 'PlayerLogout') {
-        processLoggingEvents(packet.payload);
+        // null the login date when character is logging out
+        let loginDate = (packet.payload.event_name === 'PlayerLogin') ? new Date() : null;
+        // Check if character is already in population table
+        new population.readOne(packet.payload.character_id)
+          .then(function (model) {
+            // character entry exists, so update it
+            new population.update(model, { login: loginDate });
+          })
+          .catch(function () {
+            if (loginDate !== null) {
+              // character entry does not exist. query api for basic data when logging in only
+              generateCharacterData(env, packet.payload.character_id, loginDate);
+            }
+          });
       }
     }
   });
@@ -33,19 +48,6 @@ function Stream(env) {
 
   function clearSubscribe() {
     wss.send('{"service":"event","action":"clearSubscribe","all":"true"}');
-  }
-
-  function processLoggingEvents(payload) {
-    let loginDate = (payload.event_name === 'PlayerLogin') ? new Date() : null;  // null the login date when character is logging out
-    new population.readOne(payload.character_id)  // Check if character is already in population table
-      .then(function (model) {  // character entry exists, so update it
-        new population.update(model, { login: loginDate });
-      })
-      .catch(function () {
-        if (loginDate !== null) {  // character entry does not exist. query api for basic data when logging in only
-          generateCharacterData(payload.character_id, loginDate);
-        }
-      });
   }
 
   Stream.prototype.resubscribe = function() {
@@ -73,7 +75,7 @@ new CronJob('0 */1 * * * *', function() {
   population.autoLogout(hours * 60 * 60 * 1000)
 }, null, true, process.env.TZ);
 
-function generateCharacterData(character_id, login) {
+function generateCharacterData(env, character_id, login) {
   let query = {
     character_id: character_id,
     name: null,

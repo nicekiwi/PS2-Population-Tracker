@@ -15,14 +15,12 @@ function Stream(env) {
 
   wss.on('message', function (data) {
     if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":[]}}') {
-      // clear subscription completed, resubscribe to pop events
-      subscribe();
+      subscribe();  // clear subscription completed, resubscribe to pop events
       return;
     }
     let packet = JSON.parse(data);
     if (packet.hasOwnProperty('payload') && packet.payload.hasOwnProperty('event_name')) {
       if (packet.payload.event_name === 'PlayerLogin' || packet.payload.event_name === 'PlayerLogout') {
-        //console.log(data);
         processLoggingEvents(packet.payload);
       }
     }
@@ -38,74 +36,16 @@ function Stream(env) {
   }
 
   function processLoggingEvents(payload) {
-    // null the login date when character is logging out
-    let loginDate = (payload.event_name === 'PlayerLogin') ? new Date() : null;
-    // Check if character is already in population table
-    new population.readOne(payload.character_id)
-      .then(function (model) {
-        // character entry exists, so update it
+    let loginDate = (payload.event_name === 'PlayerLogin') ? new Date() : null;  // null the login date when character is logging out
+    new population.readOne(payload.character_id)  // Check if character is already in population table
+      .then(function (model) {  // character entry exists, so update it
         new population.update(model, { login: loginDate });
       })
       .catch(function () {
-        if (loginDate !== null) {
-          // character entry does not exist. query api for basic data when logging in only
+        if (loginDate !== null) {  // character entry does not exist. query api for basic data when logging in only
           generateCharacterData(payload.character_id, loginDate);
         }
       });
-  }
-
-  function generateCharacterData(character_id, login) {
-    let uri = 'http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)';
-    let query = {
-      character_id: character_id,
-      name: null,
-      rank: null,
-      outfit_id: null,
-      outfit_name: null,
-      outfit_tag: null,
-      world_id: null,
-      faction_id: null,
-      head_id: null,
-      login: login
-    };
-
-    prequest(uri).then(function (body) {
-      if (body.hasOwnProperty('character_list') && body.character_list.length > 0) {
-        let character = body.character_list[0];
-        if (character.hasOwnProperty('name')) {
-          query.name = character.name.first;
-        }
-        if (character.hasOwnProperty('battle_rank')) {
-          query.rank = character.battle_rank.value;
-        }
-        if (character.hasOwnProperty('world_id')) {
-          query.world_id = character.world_id;
-        }
-        if (character.hasOwnProperty('faction_id')) {
-          query.faction_id = character.faction_id;
-        }
-        if (character.hasOwnProperty('head_id')) {
-          query.head_id = character.head_id;
-        }
-        if (character.hasOwnProperty('outfit')) {
-          if (character.outfit.hasOwnProperty('outfit_id')) {
-            query.outfit_id = character.outfit.outfit_id;
-          }
-          if (character.outfit.hasOwnProperty('name')) {
-            query.outfit_name = character.outfit.name;
-          }
-          if (character.outfit.hasOwnProperty('alias')) {
-            query.outfit_tag = character.outfit.alias;
-          }
-        }
-      }
-
-      // create population entry
-      new population.create(query)
-        .catch(function (err) {
-          console.error(err);
-        });
-    });
   }
 
   Stream.prototype.resubscribe = function() {
@@ -132,3 +72,58 @@ new CronJob('0 */1 * * * *', function() {
   let hours = 6;
   population.autoLogout(hours * 60 * 60 * 1000)
 }, null, true, process.env.TZ);
+
+function generateCharacterData(character_id, login) {
+  let query = {
+    character_id: character_id,
+    name: null,
+    rank: null,
+    outfit_id: null,
+    outfit_name: null,
+    outfit_tag: null,
+    world_id: null,
+    faction_id: null,
+    head_id: null,
+    login: login
+  };
+
+  prequest('http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)')
+    .then(function (body) {
+      if (body.hasOwnProperty('character_list') && body.character_list.length > 0) {
+        let character = body.character_list[0];
+
+        query.world_id   = checkJson(character, 'world_id');
+        query.faction_id = checkJson(character, 'faction_id');
+        query.head_id    = checkJson(character, 'head_id');
+
+        if (character.hasOwnProperty('outfit')) {
+          query.name = checkJson(character.name, 'first');
+        }
+        if (character.hasOwnProperty('battle_rank')) {
+          query.rank = checkJson(character.battle_rank, 'value');
+        }
+        if (character.hasOwnProperty('outfit')) {
+          query.outfit_id   = checkJson(character.outfit, 'outfit_id');
+          query.outfit_name = checkJson(character.outfit, 'name');
+          query.outfit_tag  = checkJson(character.outfit, 'alias');
+        }
+      }
+
+      createPopulationEntry(query);
+    })
+    .catch(function (err) {
+      console.error(err);
+    });
+}
+
+function createPopulationEntry(query) {
+  // create population entry
+  new population.create(query)
+    .catch(function (err) {
+      console.error(err);
+    });
+}
+
+function checkJson(json, key) {
+  return json.hasOwnProperty(key) ? json[key] : null;
+}

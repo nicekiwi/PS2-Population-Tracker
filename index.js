@@ -98,7 +98,7 @@ function generateCharacterData(env, character_id, login) {
         query.faction_id = checkJson(character, 'faction_id');
         query.head_id    = checkJson(character, 'head_id');
 
-        if (character.hasOwnProperty('outfit')) {
+        if (character.hasOwnProperty('name')) {
           query.name = checkJson(character.name, 'first');
         }
         if (character.hasOwnProperty('battle_rank')) {

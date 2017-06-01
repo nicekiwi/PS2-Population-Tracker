@@ -6,9 +6,7 @@ let population = require('./models/population');
 
 function Stream(env) {
 
-  let uri = 'wss://push.planetside2.com/streaming?environment=' + env + '&service-id=s:' + process.env.DBG_KEY1;
-  let wss = new ReconWs(uri);
-  console.log(uri);
+  let wss = new ReconWs('wss://push.planetside2.com/streaming?environment=' + env + '&service-id=s:' + process.env.DBG_KEY1);
 
   wss.on('open', function() {
     console.log('Socket Connected -> ' + env);

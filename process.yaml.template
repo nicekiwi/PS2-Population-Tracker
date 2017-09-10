@@ -1,0 +1,6 @@
+apps:
+  - name : Population
+    script : index.js
+    cwd : /home/admin/population
+    exec_mode : fork
+    interpreter : /home/admin/.nvm/versions/node/v8.1.4/bin/node

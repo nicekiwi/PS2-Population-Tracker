@@ -1,5 +1,0 @@
-apps:
-  - name : Population
-    script : index.js
-    exec_mode : fork
-    interpreter : .nvm/versions/node/v7.9.0/bin/node

@@ -9,3 +9,6 @@ node_modules
 *.sqlite3
 
 .DS_Store
+
+knexfile.js
+.env

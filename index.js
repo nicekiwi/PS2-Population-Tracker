@@ -6,7 +6,7 @@ let population = require('./models/population');
 
 function Stream(env) {
 
-  let wss = new ReconWs('wss://push.planetside2.com/streaming?environment=' + env + '&service-id=s:' + process.env.DBG_KEY1);
+  let wss = new ReconWs('wss://push.planetside2.com/streaming?environment=' + env + '&service-id=s:' + process.env.DBG_KEY);
 
   wss.on('open', function() {
     console.log('Socket Connected -> ' + env);
@@ -91,7 +91,7 @@ function generateCharacterData(env, character_id, login) {
     login: login
   };
 
-  prequest('http://census.daybreakgames.com/s:' + process.env.DBG_KEY2 + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)')
+  prequest('http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)')
     .then(function (body) {
       if (body.hasOwnProperty('character_list') && body.character_list.length > 0) {
         let character = body.character_list[0];

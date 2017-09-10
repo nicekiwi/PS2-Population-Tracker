@@ -4,15 +4,13 @@
   "description": "Population tracker for Planetside2. Specific focus on server and outfit numbers",
   "main": "index.js",
   "dependencies": {
-    "bookshelf": "^0.10.3",
-    "cron": "^1.2.1",
-    "knex": "^0.12.9",
-    "pg": "^6.1.5",
-    "prequest": "^1.0.0",
-    "recon-ws": "^1.0.0"
-  },
-  "devDependencies": {
-    "sqlite3": "^3.1.8"
+    "bookshelf": "0.10.3",
+    "cron": "1.2.1",
+    "dotenv": "4.0.0",
+    "knex": "0.12.9",
+    "pg": "7.3.0",
+    "prequest": "1.0.0",
+    "recon-ws": "1.0.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

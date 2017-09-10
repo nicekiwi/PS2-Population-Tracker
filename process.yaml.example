@@ -3,13 +3,3 @@ apps:
     script : index.js
     exec_mode : fork
     interpreter : .nvm/versions/node/v7.9.0/bin/node
-    env :
-      NODE_ENV: development
-      TZ: UTC
-      DB_CLIENT: DB_CLIENT_FOR_KNEX
-      DB_HOST: DATABASE_IP
-      DB_DATABASE: DATABASE_SCHEMA_NAME
-      DB_USER: DATABASE_USER
-      DB_PASS: DATABASE_PASSWORD
-      DBG_KEY1: YOUR_DAYBREAK_KEY
-      DBG_KEY2: YOUR_DAYBREAK_KEY

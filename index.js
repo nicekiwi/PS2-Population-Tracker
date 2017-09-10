@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 let ReconWs  = require('recon-ws'),
     prequest = require('prequest'),
     CronJob  = require('cron').CronJob;

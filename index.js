@@ -15,32 +15,29 @@ function Stream(env) {
     clearSubscribe();
   });
 
-  wss.on('message', function (data) {
-    //if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":[]}}') {
-    if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":["25"]}}') {
+  wss.on('message', async function (data) {
+    if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":[]}}') {
       subscribe();  // clear subscription completed, resubscribe to pop events
       return;
     }
-    // process data
     let packet = JSON.parse(data);
-    if (packet.hasOwnProperty('payload') && packet.payload.hasOwnProperty('event_name')) {
-      // check for player login/logout events
-      if (packet.payload.event_name === 'PlayerLogin' || packet.payload.event_name === 'PlayerLogout') {
-        // null the login date when character is logging out
-        let loginDate = (packet.payload.event_name === 'PlayerLogin') ? new Date() : null;
-        // Check if character is already in population table
-        new population.readOne(packet.payload.character_id)
-          .then(function (model) {
-            // character entry exists, so update it
-            new population.update(model, { login: loginDate });
-          })
-          .catch(function () {
-            if (loginDate !== null) {
-              // character entry does not exist. query api for basic data when logging in only
-              generateCharacterData(env, packet.payload.character_id, loginDate);
-            }
-          });
+    if (!packet.hasOwnProperty('payload') || !packet.payload.hasOwnProperty('event_name')) {
+      return;
+    }
+    if (packet.payload.event_name !== 'PlayerLogin' && packet.payload.event_name !== 'PlayerLogout') {
+      return;
+    }
+    let model = await population.readOne(packet.payload.character_id);
+    if (model) {
+      if (packet.payload.event_name === 'PlayerLogout') {
+        return await population.delete(model);
+      } else if (packet.payload.event_name === 'PlayerLogin') {
+        return await population.update(model, { login: new Date() });
       }
+    }
+
+    if (packet.payload.event_name === 'PlayerLogin') {
+      return await generateCharacterData(env, packet.payload.character_id, new Date());
     }
   });
 
@@ -79,55 +76,29 @@ new CronJob('0 */1 * * * *', function() {
   population.autoLogout(hours * 60 * 60 * 1000)
 }, null, true, process.env.TZ);
 
-function generateCharacterData(env, character_id, login) {
-  let query = {
+async function generateCharacterData(env, character_id, login) {
+  let body = await prequest('http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)')
+  if (!body.hasOwnProperty('character_list') || body.character_list.length === 0) {
+    return null;
+  }
+  let character = body.character_list[0];
+
+  let json = {
     character_id: character_id,
-    name: null,
-    rank: null,
-    outfit_id: null,
-    outfit_name: null,
-    outfit_tag: null,
-    world_id: null,
-    faction_id: null,
-    head_id: null,
-    login: login
+    name:         character.hasOwnProperty('name') ? checkJson(character.name, 'first') : null,
+    rank:         character.hasOwnProperty('battle_rank') ? checkJson(character.battle_rank, 'value') : null,
+    outfit_id:    character.hasOwnProperty('outfit') ? checkJson(character.outfit, 'outfit_id') : null,
+    outfit_name:  character.hasOwnProperty('outfit') ? checkJson(character.outfit, 'name') : null,
+    outfit_tag:   character.hasOwnProperty('outfit') ? checkJson(character.outfit, 'alias') : null,
+    world_id:     checkJson(character, 'world_id'),
+    faction_id:   checkJson(character, 'faction_id'),
+    head_id:      checkJson(character, 'head_id'),
+    login:        login
   };
 
-  prequest('http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)')
-    .then(function (body) {
-      if (body.hasOwnProperty('character_list') && body.character_list.length > 0) {
-        let character = body.character_list[0];
-
-        query.world_id   = checkJson(character, 'world_id');
-        query.faction_id = checkJson(character, 'faction_id');
-        query.head_id    = checkJson(character, 'head_id');
-
-        if (character.hasOwnProperty('name')) {
-          query.name = checkJson(character.name, 'first');
-        }
-        if (character.hasOwnProperty('battle_rank')) {
-          query.rank = checkJson(character.battle_rank, 'value');
-        }
-        if (character.hasOwnProperty('outfit')) {
-          query.outfit_id   = checkJson(character.outfit, 'outfit_id');
-          query.outfit_name = checkJson(character.outfit, 'name');
-          query.outfit_tag  = checkJson(character.outfit, 'alias');
-        }
-      }
-
-      createPopulationEntry(query);
-    })
-    .catch(function (err) {
-      console.error(err);
-    });
-}
-
-function createPopulationEntry(query) {
   // create population entry
-  new population.create(query)
-    .catch(function (err) {
-      console.error(err);
-    });
+  let model = await population.create(json);
+  return !!model;
 }
 
 function checkJson(json, key) {

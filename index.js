@@ -14,7 +14,8 @@ function Stream(env) {
   });
 
   wss.on('message', function (data) {
-    if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":[]}}') {
+    //if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":[]}}') {
+    if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":["25"]}}') {
       subscribe();  // clear subscription completed, resubscribe to pop events
       return;
     }
@@ -43,7 +44,8 @@ function Stream(env) {
 
   function subscribe() {
     console.error('Resubscribing to ' + env);
-    wss.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+    //wss.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+    wss.send('{"service":"event","action":"subscribe","worlds":["25"],"eventNames":["PlayerLogin","PlayerLogout"]}');
   }
 
   function clearSubscribe() {
@@ -56,16 +58,16 @@ function Stream(env) {
 }
 
 let PC = new Stream('ps2');
-let EU = new Stream('ps2ps4eu');
-let US = new Stream('ps2ps4us');
+//let EU = new Stream('ps2ps4eu');
+//let US = new Stream('ps2ps4us');
 
 // Resubscribe to pop tracking every 6 hours
 new CronJob('0 0 */6 * * *', function() {
   console.error(new Date().toISOString(), 'Resubscribe');
   // Run once a day at midnight. https://en.wikipedia.org/wiki/Cron
   PC.resubscribe();
-  EU.resubscribe();
-  US.resubscribe();
+  //EU.resubscribe();
+  //US.resubscribe();
 }, null, true, process.env.TZ);
 
 // Clear out bad population every 1 minutes

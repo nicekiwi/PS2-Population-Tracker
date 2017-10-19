@@ -1,106 +1,122 @@
 require('dotenv').config();
 
-let ReconWs  = require('recon-ws'),
-    prequest = require('prequest'),
-    CronJob  = require('cron').CronJob;
+const ReconWs  = require('recon-ws');
+const prequest = require('prequest');
+const cmdArgs  = require('command-line-args');
 
-let population = require('./models/population');
+const population = require('./models/population');
 
-function Stream(env) {
+const optionDefinitions = [
+  { name: 'world',  alias: 'w', type: String }
+];
 
-  let wss = new ReconWs('wss://push.planetside2.com/streaming?environment=' + env + '&service-id=s:' + process.env.DBG_KEY);
+const options = cmdArgs(optionDefinitions);
 
-  wss.on('open', function() {
-    console.log('Socket Connected -> ' + env);
-    clearSubscribe();
-  });
+if (!options.hasOwnProperty('world')) {
+  console.error('No world specified. add -w command line arguments.');
+  process.exit(1);
+}
 
-  wss.on('message', async function (data) {
-    if (data === '{"subscription":{"characterCount":0,"eventNames":[],"logicalAndCharactersWithWorlds":false,"worlds":[]}}') {
-      subscribe();  // clear subscription completed, resubscribe to pop events
-      return;
+const worlds = {
+  briggs:   { id: 25,   env: 'ps2' },
+  cobalt:   { id: 13,   env: 'ps2' },
+  connery:  { id: 1,    env: 'ps2' },
+  emerald:  { id: 17,   env: 'ps2' },
+  jaeger:   { id: 19,   env: 'ps2' },
+  miller:   { id: 10,   env: 'ps2' },
+  genudine: { id: 1000, env: 'ps2ps4us' },
+  ceres:    { id: 2000, env: 'ps2ps4eu' },
+};
+
+if (!worlds.hasOwnProperty(options.world)) {
+  console.error('Invalid server-world combo. Read the docs!');
+  process.exit(1);
+}
+
+const wss = new ReconWs('wss://push.planetside2.com/streaming?environment=' + worlds[options.world].env + '&service-id=s:' + process.env.DBG_KEY);
+
+wss.on('open', function() {
+  console.log('Socket Connected');
+  wss.send('{"service":"event","action":"subscribe","worlds":["' + worlds[options.world].id  + '"],"eventNames":["PlayerLogin","PlayerLogout"]}');
+});
+
+wss.on('message', function (data) {
+  let packet = JSON.parse(data);
+  if (packet.hasOwnProperty('payload') && packet.payload.hasOwnProperty('event_name')) {
+    if (packet.payload.event_name === 'PlayerLogin' || packet.payload.event_name === 'PlayerLogout') {
+      //processLoggingEvents(packet.payload);
+      console.log(packet.payload);
     }
-    let packet = JSON.parse(data);
-    if (!packet.hasOwnProperty('payload') || !packet.payload.hasOwnProperty('event_name')) {
-      return;
-    }
-    if (packet.payload.event_name !== 'PlayerLogin' && packet.payload.event_name !== 'PlayerLogout') {
-      return;
-    }
-    let model = await population.readOne(packet.payload.character_id);
-    if (model) {
-      if (packet.payload.event_name === 'PlayerLogout') {
-        return await population.delete(model);
-      } else if (packet.payload.event_name === 'PlayerLogin') {
-        return await population.update(model, { login: new Date() });
+  }
+});
+
+function processLoggingEvents(payload) {
+  // null the login date when character is logging out
+  let loginDate = (payload.event_name === 'PlayerLogin') ? new Date() : null;
+  // Check if character is already in population table
+  new population.readOne(payload.character_id)
+    .then(function (model) {
+      // character entry exists, so update it
+      new population.update(model, { login: loginDate });
+    })
+    .catch(function () {
+      if (loginDate !== null) {
+        // character entry does not exist. query api for basic data when logging in only
+        generateCharacterData(payload.character_id, loginDate);
+      }
+    });
+}
+
+function generateCharacterData(character_id, login) {
+  let uri = 'http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)';
+  let query = {
+    character_id: character_id,
+    name: null,
+    rank: null,
+    outfit_id: null,
+    outfit_name: null,
+    outfit_tag: null,
+    world_id: null,
+    faction_id: null,
+    head_id: null,
+    login: login
+  };
+
+  prequest(uri).then(function (body) {
+    if (body.hasOwnProperty('character_list') && body.character_list.length > 0) {
+      let character = body.character_list[0];
+      if (character.hasOwnProperty('name')) {
+        query.name = character.name.first;
+      }
+      if (character.hasOwnProperty('battle_rank')) {
+        query.rank = character.battle_rank.value;
+      }
+      if (character.hasOwnProperty('world_id')) {
+        query.world_id = character.world_id;
+      }
+      if (character.hasOwnProperty('faction_id')) {
+        query.faction_id = character.faction_id;
+      }
+      if (character.hasOwnProperty('head_id')) {
+        query.head_id = character.head_id;
+      }
+      if (character.hasOwnProperty('outfit')) {
+        if (character.outfit.hasOwnProperty('outfit_id')) {
+          query.outfit_id = character.outfit.outfit_id;
+        }
+        if (character.outfit.hasOwnProperty('name')) {
+          query.outfit_name = character.outfit.name;
+        }
+        if (character.outfit.hasOwnProperty('alias')) {
+          query.outfit_tag = character.outfit.alias;
+        }
       }
     }
 
-    if (packet.payload.event_name === 'PlayerLogin') {
-      return await generateCharacterData(env, packet.payload.character_id, new Date());
-    }
+    // create population entry
+    new population.create(query)
+      .catch(function (err) {
+        console.error(err);
+      });
   });
-
-  function subscribe() {
-    console.error('Resubscribing to ' + env);
-    //wss.send('{"service":"event","action":"subscribe","worlds":["all"],"eventNames":["PlayerLogin","PlayerLogout"]}');
-    wss.send('{"service":"event","action":"subscribe","worlds":["25"],"eventNames":["PlayerLogin","PlayerLogout"]}');
-  }
-
-  function clearSubscribe() {
-    wss.send('{"service":"event","action":"clearSubscribe","all":"true"}');
-  }
-
-  Stream.prototype.resubscribe = function() {
-    clearSubscribe();
-  };
-}
-
-let PC = new Stream('ps2');
-//let EU = new Stream('ps2ps4eu');
-//let US = new Stream('ps2ps4us');
-
-// Resubscribe to pop tracking every 6 hours
-new CronJob('0 0 */6 * * *', function() {
-  console.error(new Date().toISOString(), 'Resubscribe');
-  // Run once a day at midnight. https://en.wikipedia.org/wiki/Cron
-  PC.resubscribe();
-  //EU.resubscribe();
-  //US.resubscribe();
-}, null, true, process.env.TZ);
-
-// Clear out bad population every 1 minutes
-new CronJob('0 */1 * * * *', function() {
-  // Clear out all population entries with a null login date or a very old login (6 hrs old)
-  let hours = 6;
-  population.autoLogout(hours * 60 * 60 * 1000)
-}, null, true, process.env.TZ);
-
-async function generateCharacterData(env, character_id, login) {
-  let body = await prequest('http://census.daybreakgames.com/s:' + process.env.DBG_KEY + '/get/' + env + '/character/' + character_id + '?c:resolve=world,outfit(name,alias)&c:hide=name.first_lower,daily_ribbon,certs,times,profile_id,title_id,battle_rank(percent_to_next)')
-  if (!body.hasOwnProperty('character_list') || body.character_list.length === 0) {
-    return null;
-  }
-  let character = body.character_list[0];
-
-  let json = {
-    character_id: character_id,
-    name:         character.hasOwnProperty('name') ? checkJson(character.name, 'first') : null,
-    rank:         character.hasOwnProperty('battle_rank') ? checkJson(character.battle_rank, 'value') : null,
-    outfit_id:    character.hasOwnProperty('outfit') ? checkJson(character.outfit, 'outfit_id') : null,
-    outfit_name:  character.hasOwnProperty('outfit') ? checkJson(character.outfit, 'name') : null,
-    outfit_tag:   character.hasOwnProperty('outfit') ? checkJson(character.outfit, 'alias') : null,
-    world_id:     checkJson(character, 'world_id'),
-    faction_id:   checkJson(character, 'faction_id'),
-    head_id:      checkJson(character, 'head_id'),
-    login:        login
-  };
-
-  // create population entry
-  let model = await population.create(json);
-  return !!model;
-}
-
-function checkJson(json, key) {
-  return json.hasOwnProperty(key) ? json[key] : null;
 }
